@@ -5,12 +5,16 @@ library(randomForest)
 library(tictoc)
 library(flexclust)
 
+# nTree=10, n=1e5 -> 617s, RMSE = 3.932298
+# nTree=15, n=1e5 -> 913s, RMSE = 3.927082
+# nTree=15, n=1e6 -> 203481s, RMSE = 2.949493
+
 # allData <- as_tibble(read.csv('train.csv', sep = ','))
 # save(allData, file = "trainData.RData")
-# load('trainData.RData')
-# sampleTrain <- sample_n(allData, 2e5, replace = FALSE)
-# rm(allData)
-# save(sampleTrain, file = "sampleTrain.RData")
+load('trainData.RData')
+sampleTrain <- sample_n(allData, 1e6, replace = FALSE)
+rm(allData)
+save(sampleTrain, file = "sampleTrain.RData")
 load('sampleTrain.Rdata')
 
 testData <- as_tibble(read.csv('test.csv', sep = ','))
@@ -110,7 +114,7 @@ sampleTrainTest <- sampleTrain[-forTrain,]
 # Defult ntree = 500.
 # Finding a better mtry than standard p/3 takes a long time, will use defult.
 tic()
-fitRF <- randomForest(formula = fare_amount ~ ., data = sampleTrainTrain, ntree = 10)
+fitRF <- randomForest(formula = fare_amount ~ ., data = sampleTrainTrain, ntree = 15)
 toc()
 
 # Checking model by predicting on out of sample data
@@ -136,15 +140,6 @@ predictTestData <- predict(fitRF, testData)
 submission <- bind_cols(as_tibble(testDataKey), as_tibble(predictTestData)) %>%
   rename(key = value, fare_amount = value1)
 
-write.csv(submission, file = "submission2.csv",row.names=FALSE, quote = FALSE)
-
-
-
-
-
-
-
-
-
+write.csv(submission, file = "submission3.csv",row.names=FALSE, quote = FALSE)
 
 
