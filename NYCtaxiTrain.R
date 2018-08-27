@@ -1,3 +1,4 @@
+library(data.table)
 library(tidyverse)
 library(lubridate)
 library(caret)
@@ -9,7 +10,8 @@ library(flexclust)
 # nTree=15, n=1e5 -> 913s, RMSE = 3.927082
 # nTree=15, n=1e6 -> 203481s, RMSE = 2.949493
 
-# allData <- as_tibble(read.csv('train.csv', sep = ','))
+allData <- as_tibble(fread("train.csv"))
+
 # save(allData, file = "trainData.RData")
 load('trainData.RData')
 sampleTrain <- sample_n(allData, 1e6, replace = FALSE)
@@ -123,7 +125,7 @@ predictRF <- predict(fitRF, sampleTrainTest)
 # Using root mean squared as error function
 rmseRF <- sqrt(sum((predictRF - sampleTrainTest$fare_amount)^2) / nrow(sampleTrainTest))
 print(rmseRF)
- 
+
 
 # Completing levels in testData
 levels(testData$month) <- levels(sampleTrain$month)
@@ -142,4 +144,4 @@ submission <- bind_cols(as_tibble(testDataKey), as_tibble(predictTestData)) %>%
 
 write.csv(submission, file = "submission3.csv",row.names=FALSE, quote = FALSE)
 
-# Kaggle score 3.26507
+
