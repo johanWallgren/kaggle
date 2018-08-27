@@ -123,7 +123,7 @@ predictRF <- predict(fitRF, sampleTrainTest)
 # Using root mean squared as error function
 rmseRF <- sqrt(sum((predictRF - sampleTrainTest$fare_amount)^2) / nrow(sampleTrainTest))
 print(rmseRF)
-
+ 
 
 # Completing levels in testData
 levels(testData$month) <- levels(sampleTrain$month)
