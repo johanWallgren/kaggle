@@ -142,4 +142,4 @@ submission <- bind_cols(as_tibble(testDataKey), as_tibble(predictTestData)) %>%
 
 write.csv(submission, file = "submission3.csv",row.names=FALSE, quote = FALSE)
 
-
+# Kaggle score 3.26507
