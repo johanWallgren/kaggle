@@ -8,19 +8,29 @@ library(geosphere)
 library(xgboost)
 library(Matrix)
 
-# n = 1e5, ntree = 5 -> RMSE = 4.68
-# n = 1e5, ntree = 10 -> RMSE = 4.53
-# n = 1e5, ntree = 15 -> RMSE = 4.53
-
-
+# n = 1e5, ntree = 05, nround = 400, eta = 0.05 -> RMSE = 4.68
+# n = 1e5, ntree = 10, nround = 400, eta = 0.05 -> RMSE = 4.53
+# n = 1e5, ntree = 15, nround = 400, eta = 0.05 -> RMSE = 4.06
+# n = 1e5, ntree = 20, nround = 400, eta = 0.05 -> RMSE = 4.62
+# n = 2e5, ntree = 15, nround = 400, eta = 0.05 -> RMSE = 3.98
+# n = 2e5, ntree = 20, nround = 400, eta = 0.05 -> RMSE = 4.25
+# n = 2e5, ntree = 20, nround = 500, eta = 0.05 -> RMSE = 4.36
+# n = 2e5, ntree = 15, nround = 500, eta = 0.05 -> RMSE = 3.75
+# n = 5e5, ntree = 15, nround = 700, eta = 0.05 -> RMSE = 4.14
+# n = 5e5, ntree = 15, nround = 1000, eta = 0.05 -> RMSE = 4.14
+# n = 5e5, ntree = 15, nround = 1000, eta = 0.10 -> RMSE = 4.14
+# n = 1e7, ntree = 15, nround = 500, eta = 0.10 -> RMSE = 3.71
+# n = all, ntree = 15, nround = 1000, eta = 0.20 -> RMSE = 
 
 # allData <- as_tibble(fread("train.csv"))
 # save(allData, file = "trainData.RData")
 # load('trainData.RData')
-# sampleTrain <- sample_n(allData, 1e5, replace = FALSE)
+# sampleTrain <- sample_n(allData, 5e7, replace = FALSE)
 # rm(allData)
 # save(sampleTrain, file = "sampleTrain.RData")
-load('sampleTrain.Rdata')
+# load('sampleTrain.Rdata')
+
+# sampleTrain <- allData
 
 testData <- as_tibble(read.csv('test.csv', sep = ','))
 
@@ -60,39 +70,39 @@ testData <- mutate(testData,
                    partOfDay = (round(hour * 2 / 10))
 )
 
-
-# Creating clusters for pickup location
-pickup_geoData <- select(sampleTrain,pickup_longitude, pickup_latitude)
-pickup_clusters <- flexclust::kcca(pickup_geoData, k = 15, kccaFamily("kmeans"))
-pickup_geoData$pickup_cluster <- as.factor(pickup_clusters@cluster)
-
-pickup_geoDataPlot <- ggplot(pickup_geoData,aes(pickup_longitude, pickup_latitude, color = pickup_cluster))
-pickup_geoDataPlot + geom_point(shape = 16, size = 0.2) + 
-  scale_colour_hue() + 
-  coord_fixed() + 
-  theme(legend.position="none")
-
-sampleTrain$pickup_geoCluster <- pickup_geoData$pickup_cluster
-
-pickup_geoData_test <- select(testData, pickup_longitude, pickup_latitude)
-testData$pickup_geoCluster <- as.factor(flexclust::predict(pickup_clusters, newdata = pickup_geoData_test))
-
-
-# Creating clusters for dropoff location
-dropoff_geoData <- select(sampleTrain, dropoff_longitude, dropoff_latitude)
-dropoff_clusters <- flexclust::kcca(dropoff_geoData, k = 15, kccaFamily("kmeans"))
-dropoff_geoData$dropoff_cluster <- as.factor(dropoff_clusters@cluster)
-
-dropoff_geoDataPlot <- ggplot(dropoff_geoData,aes(dropoff_longitude, dropoff_latitude, color = dropoff_cluster))
-dropoff_geoDataPlot + geom_point(shape = 16, size = 0.2) + 
-  scale_colour_hue() + 
-  coord_fixed() + 
-  theme(legend.position="none")
-
-sampleTrain$dropoff_geoCluster <- dropoff_geoData$dropoff_cluster
-
-dropoff_geoData_test <- select(testData, dropoff_longitude, dropoff_latitude)
-testData$dropoff_geoCluster <- as.factor(flexclust::predict(dropoff_clusters, newdata = dropoff_geoData_test))
+# 
+# # Creating clusters for pickup location
+# pickup_geoData <- select(sampleTrain,pickup_longitude, pickup_latitude)
+# pickup_clusters <- flexclust::kcca(pickup_geoData, k = 15, kccaFamily("kmeans"))
+# pickup_geoData$pickup_cluster <- as.factor(pickup_clusters@cluster)
+# 
+# pickup_geoDataPlot <- ggplot(pickup_geoData,aes(pickup_longitude, pickup_latitude, color = pickup_cluster))
+# pickup_geoDataPlot + geom_point(shape = 16, size = 0.2) + 
+#   scale_colour_hue() + 
+#   coord_fixed() + 
+#   theme(legend.position="none")
+# 
+# sampleTrain$pickup_geoCluster <- pickup_geoData$pickup_cluster
+# 
+# pickup_geoData_test <- select(testData, pickup_longitude, pickup_latitude)
+# testData$pickup_geoCluster <- as.factor(flexclust::predict(pickup_clusters, newdata = pickup_geoData_test))
+# 
+# 
+# # Creating clusters for dropoff location
+# dropoff_geoData <- select(sampleTrain, dropoff_longitude, dropoff_latitude)
+# dropoff_clusters <- flexclust::kcca(dropoff_geoData, k = 15, kccaFamily("kmeans"))
+# dropoff_geoData$dropoff_cluster <- as.factor(dropoff_clusters@cluster)
+# 
+# dropoff_geoDataPlot <- ggplot(dropoff_geoData,aes(dropoff_longitude, dropoff_latitude, color = dropoff_cluster))
+# dropoff_geoDataPlot + geom_point(shape = 16, size = 0.2) + 
+#   scale_colour_hue() + 
+#   coord_fixed() + 
+#   theme(legend.position="none")
+# 
+# sampleTrain$dropoff_geoCluster <- dropoff_geoData$dropoff_cluster
+# 
+# dropoff_geoData_test <- select(testData, dropoff_longitude, dropoff_latitude)
+# testData$dropoff_geoCluster <- as.factor(flexclust::predict(dropoff_clusters, newdata = dropoff_geoData_test))
 
 # Calculating traveled distance
 sampleTrain <- mutate(sampleTrain, dist = distHaversine(
@@ -135,9 +145,9 @@ ytest <- y[-train_ind, ]
 
 xgb <- xgboost(data = data.matrix(Xtrain), 
                label = data.matrix(ytrain), 
-               eta = 0.05, # step size of each boosting step
-               max_depth = 25, # max depth of tree
-               nround = 400, 
+               eta = 0.2, # step size of each boosting step
+               max_depth = 40, # max depth of tree
+               nround = 1000, 
                eval_metric = "rmse",
                objective = "reg:linear"
 )
@@ -157,5 +167,5 @@ test_pred <- predict(xgb, data.matrix(testDataOneHot))
 submission <- bind_cols(as_tibble(testDataKey), as_tibble(10^test_pred)) %>%
   rename(key = value, fare_amount = value1)
 
-# write.csv(submission, file = "submission5.csv",row.names=FALSE, quote = FALSE)
+write.csv(submission, file = "submission7.csv",row.names=FALSE, quote = FALSE)
 
