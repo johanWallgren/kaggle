@@ -131,8 +131,7 @@ history <- model %>% fit(
 
 
 testTrainPredict <- model %>% predict(testTrainData)
-
-rmse <- sqrt(sum(10^testTrainPredict - 10^testTrainDataLabels)^2 / nrow(testTrainDataLabels))
+rmse <- sqrt(sum((10^testTrainPredict - 10^testTrainDataLabels)^2) / nrow(testTrainDataLabels))
 print(rmse)
 
 testPredict <- model %>% predict(testData)
