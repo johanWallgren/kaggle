@@ -5,18 +5,12 @@ library(tictoc)
 library(geosphere)
 library(keras)
 
-# allData <- as_tibble(fread("train.csv"))
-# save(allData, file = "trainData.RData")
-# load('trainData.RData')
-# sampleTrain <- sample_n(allData, 1e5, replace = FALSE)
-# rm(allData)
-# save(sampleTrain, file = "sampleTrain.RData")
-load('sampleTrain.Rdata')
-
+allData <- as_tibble(fread("train.csv"))
+sampleTrain <- sample_n(allData, 1e6, replace = FALSE)
+rm(allData)
 testData <- as_tibble(read.csv('test.csv', sep = ','))
 
 # filter out outliers
-
 sampleTrain <- filter(sampleTrain,
                       pickup_longitude < -72.5 &
                         pickup_longitude > -74.5 &
@@ -79,19 +73,23 @@ sampleTrain <- mutate(sampleTrain, fare_amount = log10(fare_amount))
 # Devide into train and test, extracting fare_amount
 forTrain <- sample(1:nrow(sampleTrain), floor(nrow(sampleTrain) * 0.75), replace=FALSE)
 
-trainData <- sampleTrain[forTrain,-1]
-trainDataLabels <- sampleTrain[forTrain,1]
+trainData <- as.matrix(sampleTrain[forTrain,-1])
+trainDataLabels <- as.matrix(sampleTrain[forTrain,1])
 
-testTrainData <- sampleTrain[-forTrain,-1]
-testTrainDataLabels <- sampleTrain[-forTrain,1]
+testTrainData <- as.matrix(sampleTrain[-forTrain,-1])
+testTrainDataLabels <- as.matrix(sampleTrain[-forTrain,1])
 
 
 # Normalizing data
 trainData <- scale(trainData)
-testTrainData <- scale(testTrainData)
+
+col_means_train <- attr(trainData, "scaled:center") 
+col_stddevs_train <- attr(trainData, "scaled:scale")
+testTrainData <- scale(testTrainData, center = col_means_train, scale = col_stddevs_train)
+testData<- scale(as.matrix(testData), center = col_means_train, scale = col_stddevs_train)
+
 
 build_model <- function() {
-  
   model <- keras_model_sequential() %>%
     layer_dense(units = 64, activation = "relu",
                 input_shape = dim(trainData)[2]) %>%
@@ -111,26 +109,37 @@ model <- build_model()
 model %>% summary()
 
 
+# Display training progress by printing a single dot for each completed epoch.
+print_dot_callback <- callback_lambda(
+  on_epoch_end = function(epoch, logs) {
+    if (epoch %% 80 == 0) cat("\n")
+    cat(".")
+  }
+)    
+
+epochs <- 5
+
+# Fit the model and store training stats
+history <- model %>% fit(
+  trainData,
+  trainDataLabels,
+  epochs = epochs,
+  validation_split = 0.2,
+  verbose = 0,
+  callbacks = list(print_dot_callback)
+)
 
 
+testTrainPredict <- model %>% predict(testTrainData)
+
+rmse <- sqrt(sum(10^testTrainPredict - 10^testTrainDataLabels)^2 / nrow(testTrainDataLabels))
+print(rmse)
+
+testPredict <- model %>% predict(testData)
 
 
+submission <- bind_cols(as_tibble(testDataKey), as_tibble(10^testPredict[ ,1])) %>%
+  rename(key = value, fare_amount = value1)
 
-
-
-
-
-# submission <- bind_cols(as_tibble(testDataKey), as_tibble(10^test_pred)) %>%
-#   rename(key = value, fare_amount = value1)
-# 
+ 
 # write.csv(submission, file = "submission7.csv",row.names=FALSE, quote = FALSE)
-
-
-
-
-
-
-
-
-
-
