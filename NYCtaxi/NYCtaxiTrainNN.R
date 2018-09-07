@@ -6,7 +6,7 @@ library(geosphere)
 library(keras)
 
 allData <- as_tibble(fread("train.csv"))
-sampleTrain <- sample_n(allData, 1e6, replace = FALSE)
+sampleTrain <- sample_n(allData, 3e7, replace = FALSE)
 rm(allData)
 testData <- as_tibble(read.csv('test.csv', sep = ','))
 
@@ -91,14 +91,16 @@ testData<- scale(as.matrix(testData), center = col_means_train, scale = col_stdd
 
 build_model <- function() {
   model <- keras_model_sequential() %>%
-    layer_dense(units = 64, activation = "relu",
-                input_shape = dim(trainData)[2]) %>%
-    layer_dense(units = 64, activation = "relu") %>%
+    layer_dense(units = 128, activation = "relu", input_shape = dim(trainData)[2]) %>%
+    layer_dropout(0.5) %>%
+    layer_dense(units = 128, activation = "relu") %>%
+    layer_dropout(0.5) %>%
+    layer_dense(units = 128, activation = "relu") %>%    
     layer_dense(units = 1)
   
   model %>% compile(
     loss = "mse",
-    optimizer = optimizer_rmsprop(),
+    optimizer = optimizer_adam(),
     metrics = list("mean_absolute_error")
   )
   
@@ -117,10 +119,10 @@ print_dot_callback <- callback_lambda(
   }
 )    
 
-epochs <- 5
+epochs <- 25
 
-# Fit the model and store training stats
-history <- model %>% fit(
+# Fit the model 
+model %>% fit(
   trainData,
   trainDataLabels,
   epochs = epochs,
@@ -131,7 +133,8 @@ history <- model %>% fit(
 
 
 testTrainPredict <- model %>% predict(testTrainData)
-rmse <- sqrt(sum((10^testTrainPredict - 10^testTrainDataLabels)^2) / nrow(testTrainDataLabels))
+
+rmse <- sqrt(sum(10^testTrainPredict - 10^testTrainDataLabels)^2 / nrow(testTrainDataLabels))
 print(rmse)
 
 testPredict <- model %>% predict(testData)
@@ -141,4 +144,4 @@ submission <- bind_cols(as_tibble(testDataKey), as_tibble(10^testPredict[ ,1])) 
   rename(key = value, fare_amount = value1)
 
  
-# write.csv(submission, file = "submission7.csv",row.names=FALSE, quote = FALSE)
+write.csv(submission, file = "submissionNN01.csv",row.names=FALSE, quote = FALSE)
