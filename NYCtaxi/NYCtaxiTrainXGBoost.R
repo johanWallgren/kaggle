@@ -8,29 +8,23 @@ library(geosphere)
 library(xgboost)
 library(Matrix)
 
-# n = 1e5, ntree = 05, nround = 400, eta = 0.05 -> RMSE = 4.68
-# n = 1e5, ntree = 10, nround = 400, eta = 0.05 -> RMSE = 4.53
-# n = 1e5, ntree = 15, nround = 400, eta = 0.05 -> RMSE = 4.06
-# n = 1e5, ntree = 20, nround = 400, eta = 0.05 -> RMSE = 4.62
-# n = 2e5, ntree = 15, nround = 400, eta = 0.05 -> RMSE = 3.98
-# n = 2e5, ntree = 20, nround = 400, eta = 0.05 -> RMSE = 4.25
-# n = 2e5, ntree = 20, nround = 500, eta = 0.05 -> RMSE = 4.36
-# n = 2e5, ntree = 15, nround = 500, eta = 0.05 -> RMSE = 3.75
-# n = 5e5, ntree = 15, nround = 700, eta = 0.05 -> RMSE = 4.14
-# n = 5e5, ntree = 15, nround = 1000, eta = 0.05 -> RMSE = 4.14
-# n = 5e5, ntree = 15, nround = 1000, eta = 0.10 -> RMSE = 4.14
-# n = 1e7, ntree = 15, nround = 500, eta = 0.10 -> RMSE = 3.71
-# n = all, ntree = 15, nround = 1000, eta = 0.20 -> RMSE = 
+# n = 1e5, nround = 400, eta = 0.05 -> RMSE = 4.68
+# n = 1e5, nround = 400, eta = 0.05 -> RMSE = 4.53
+# n = 1e5, nround = 400, eta = 0.05 -> RMSE = 4.06
+# n = 1e5, nround = 400, eta = 0.05 -> RMSE = 4.62
+# n = 2e5, nround = 400, eta = 0.05 -> RMSE = 3.98
+# n = 2e5, nround = 400, eta = 0.05 -> RMSE = 4.25
+# n = 2e5, nround = 500, eta = 0.05 -> RMSE = 4.36
+# n = 2e5, nround = 500, eta = 0.05 -> RMSE = 3.75
+# n = 5e5, nround = 700, eta = 0.05 -> RMSE = 4.14
+# n = 5e5, nround = 1000, eta = 0.05 -> RMSE = 4.14
+# n = 5e5, nround = 1000, eta = 0.10 -> RMSE = 4.14
+# n = 1e7, nround = 500, eta = 0.10 -> RMSE = 3.71
 
 # allData <- as_tibble(fread("train.csv"))
 # save(allData, file = "trainData.RData")
 load('trainData.RData')
-# sampleTrain <- sample_n(allData, 5e7, replace = FALSE)
-# rm(allData)
-# save(sampleTrain, file = "sampleTrain.RData")
-# load('sampleTrain.Rdata')
-
-sampleTrain <- allData
+sampleTrain <- sample_n(allData, 3e7, replace = FALSE)
 rm(allData)
 
 testData <- as_tibble(read.csv('test.csv', sep = ','))
@@ -104,22 +98,30 @@ Xtest <- sampleTrain[-train_ind, ]
 ytrain <- y[train_ind, ]
 ytest <- y[-train_ind, ]
 
+tic()
 xgb <- xgboost(data = data.matrix(Xtrain[-1]), 
-               label = data.matrix(ytrain), 
-               eta = 0.2, # step size of each boosting step
-               max_depth = 40, # max depth of tree
-               nround = 750, 
-               eval_metric = "rmse",
-               objective = "reg:linear"
+               label = data.matrix(ytrain),
+               booster = 'gbtree',
+               eta = 0.1, # step size of each boosting step
+               nround = 800,
+               eval_metric = 'rmse',
+               objective = 'reg:linear',
+               tree_method = 'exact',
+               max_depth = 20,
+               subsample = 0.8,
+               colsample_bytree = 0.8,
+               callbacks = list(cb.early.stop(stopping_rounds = 3, verbose = TRUE))
 )
-
+toc()
 # Checking model by predicting on out of sample data
 y_pred <- as_tibble(predict(xgb, data.matrix(Xtest[-1])))
 
 
 # Using root mean squared as error function
-rmseRF <- sqrt(sum((10^y_pred - 10^ytest)^2) / nrow(ytest))
-print(rmseRF)
+rmseXGB <- sqrt(sum((y_pred - ytest)^2) / nrow(ytest))
+print(rmseXGB)
+rmseXGB <- sqrt(sum((10^y_pred - 10^ytest)^2) / nrow(ytest))
+print(rmseXGB)
 
 # Predicting on testDataOneHot
 test_pred <- predict(xgb, data.matrix(testData))
@@ -128,5 +130,5 @@ test_pred <- predict(xgb, data.matrix(testData))
 submission <- bind_cols(as_tibble(testDataKey), as_tibble(10^test_pred)) %>%
   rename(key = value, fare_amount = value1)
 
-write.csv(submission, file = "submission7.csv",row.names=FALSE, quote = FALSE)
+write.csv(submission, file = "submission9.csv",row.names=FALSE, quote = FALSE)
 
