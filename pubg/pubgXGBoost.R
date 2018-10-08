@@ -52,8 +52,6 @@ corrplot(corM, method = 'circle')
 # DBNOs          	0.2795
 # headshotKills  	0.2787
 # revives        	0.2514
-#--------------------#
-# LOW CORR PREDICTORS (TO BE REMOVED BEFORE TRAINING)
 # winPoints      	0.1704
 # swimDistance   	0.1549
 # roadKills      	0.0289
@@ -74,12 +72,10 @@ corrplot(corM, method = 'circle')
 ########################
 
 # Drop predictors with low correlation and group data
-train <- select(train, -winPoints, -swimDistance, -roadKills, -teamKills, -killPoints, -vehicleDestroys,
-                -numGroups, -maxPlace, -matchId, -groupId, -Id)
+train <- select(train, -numGroups, -maxPlace, -matchId, -groupId, -Id)
 
 testID <- test$Id
-test <- select(test, -winPoints, -swimDistance, -roadKills, -teamKills, -killPoints, -vehicleDestroys,
-               -numGroups, -maxPlace, -matchId, -groupId, -Id)
+test <- select(test, -numGroups, -maxPlace, -matchId, -groupId, -Id)
 
 ########################
 # XGBoost
@@ -88,7 +84,7 @@ winPlacePercColumn <- which(names(train) == 'winPlacePerc')
 y <- train[ ,winPlacePercColumn]
 
 # Deviding data in to test and train
-smp_size <- floor(0.85 * nrow(train))
+smp_size <- floor(0.95 * nrow(train))
 train_ind <- sample(seq_len(nrow(train)), size = smp_size)
 
 Xtrain <- train[train_ind, ]
@@ -100,17 +96,20 @@ tic()
 xgb <- xgboost(data = data.matrix(Xtrain[-winPlacePercColumn]), 
                label = data.matrix(ytrain),
                booster = 'gbtree',
-               eta = 0.1, # step size of each boosting step
-               nround = 50,
+               eta = 0.2, # step size of each boosting step
+               nround = 200,
                eval_metric = 'rmse',
                objective = 'reg:linear',
                tree_method = 'exact',
-               max_depth = 20,
+               max_depth = 10,
                subsample = 0.8,
                colsample_bytree = 0.8)
 toc()
 
-y_pred <- as_tibble(predict(xgb, data.matrix(Xtest[-winPlacePercColumn])))
+y_pred <- as_tibble(predict(xgb, data.matrix(Xtest[-winPlacePercColumn]))) %>%
+  mutate(value = ifelse(value > 1, 1, value), 
+         value = ifelse(value < 0, 0, value))
+
 
 # Using root mean squared as error function
 rmseXGB <- sqrt(sum((y_pred - ytest)^2) / nrow(ytest))
