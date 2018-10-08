@@ -101,22 +101,24 @@ xgb <- xgboost(data = data.matrix(Xtrain[-winPlacePercColumn]),
                label = data.matrix(ytrain),
                booster = 'gbtree',
                eta = 0.1, # step size of each boosting step
-               nround = 3,
+               nround = 50,
                eval_metric = 'rmse',
                objective = 'reg:linear',
                tree_method = 'exact',
-               max_depth = 20,
+               max_depth = 50,
                subsample = 0.8,
                colsample_bytree = 0.8)
 toc()
 
+y_pred <- as_tibble(predict(xgb, data.matrix(Xtest[-winPlacePercColumn])))
 
+# Using root mean squared as error function
+rmseXGB <- sqrt(sum((y_pred - ytest)^2) / nrow(ytest))
+print(rmseXGB)
 
+# Predicting on test
+test_pred <- predict(xgb, data.matrix(test))
 
-
-
-
-
-
-
+submission <- bind_cols(as_tibble(testID), as_tibble(test_pred)) %>%
+  rename(Id = value, winPlacePerc = value1)
 
