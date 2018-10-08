@@ -1,6 +1,5 @@
 library(data.table)
 library(tidyverse)
-library(corrplot)
 library(xgboost)
 library(tictoc)
 library(Matrix)
@@ -29,45 +28,6 @@ largeTrainGroups <- filter(train, nPlayersInGroup > maxPlayersInGroupTest)
 
 train <- filter(train, matchId != any(unique(largeTrainGroups$matchId))) %>%
   select(-nPlayersInGroup)
-
-########################
-
-corM <- cor(train)
-corrplot(corM, method = 'circle')
-
-# Correlation with winPlacePerc
-#--------------------#
-# HIGH CORR PREDICTORS
-# walkDistance   	0.8119
-# killPlace      -0.7083
-# boosts         	0.6181
-# weaponsAcquired	0.5715
-# damageDealt    	0.4386
-# heals          	0.4280
-# kills          	0.4153
-# longestKill    	0.4058
-# killStreaks    	0.3725
-# assists        	0.3046
-# rideDistance   	0.3012
-# DBNOs          	0.2795
-# headshotKills  	0.2787
-# revives        	0.2514
-# winPoints      	0.1704
-# swimDistance   	0.1549
-# roadKills      	0.0289
-# teamKills      -0.0061
-# killPoints     	0.0903 
-# vehicleDestroys	0.0577
-#--------------------#
-# GROUP DATA (TO BE REMOVED BEFORE TRAINING)
-# numGroups      	0.0358
-# maxPlace       	0.0342
-#--------------------#
-# NONE GAME STATS (TO BE REMOVED BEFORE TRAINING)
-# matchId        	0.0004
-# groupId        -0.0002
-# Id             -0.0182
-
 
 ########################
 
@@ -120,4 +80,3 @@ test_pred <- predict(xgb, data.matrix(test))
 
 submission <- bind_cols(as_tibble(testID), as_tibble(test_pred)) %>%
   rename(Id = value, winPlacePerc = value1)
-
