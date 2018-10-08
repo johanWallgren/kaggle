@@ -105,7 +105,7 @@ xgb <- xgboost(data = data.matrix(Xtrain[-winPlacePercColumn]),
                eval_metric = 'rmse',
                objective = 'reg:linear',
                tree_method = 'exact',
-               max_depth = 50,
+               max_depth = 20,
                subsample = 0.8,
                colsample_bytree = 0.8)
 toc()
