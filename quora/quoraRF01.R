@@ -53,8 +53,8 @@ getAllSents <- function(df){
 allSentsTrain <- getAllSents(train)
 train <- bind_cols(train, allSentsTrain)
 
-# allSentsTest <- getAllSents(test)
-# test <- bind_cols(test, allSentsTest)
+allSentsTest <- getAllSents(test)
+test <- bind_cols(test, allSentsTest)
 
 question_text_train <- select(train, qid, question_text)
 
