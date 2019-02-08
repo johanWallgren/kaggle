@@ -191,7 +191,7 @@ testTrain <- train[-train_ind, ]
 # RF
 tic()
 fitRF <- randomForest(formula = revenue ~ ., data = trainTrain, 
-                      ntree = 1000,
+                      ntree = 500,
                       mtry = 15,
                       nodesize = 10, 
                       importance = TRUE)
