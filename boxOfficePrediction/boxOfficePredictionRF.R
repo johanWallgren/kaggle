@@ -5,22 +5,6 @@ library(lubridate)
 library(randomForest)
 library(tictoc)
 
-
-fixLevels <- function(df1, df2){
-  # Making sure that the levels are the same in train and test
-  # Assuming that colnames are same for df1 and df2
-  for(i in 1:dim(df2)[2]){
-    if(class(df1[[i]]) == 'factor'){
-      allLevels <- unique(c(levels(df1[[i]]),  levels(df2[[i]])))
-      levels(df1[[i]]) <- allLevels
-      levels(df2[[i]]) <- allLevels
-    }
-  }
-  return(list(df1, df2))
-}
-
-
-
 train_raw = read_csv("train.csv") 
 test_raw = read_csv("test.csv")
 
@@ -78,7 +62,6 @@ train <- train_raw %>%
          dayRelease = wday(release_date),
          budget = ifelse(budget < 1000, mBudgetTrain, budget),
          runtime = ifelse(is.na(runtime) == TRUE, mRuntimeTrain, runtime),
-         original_language = as.factor(original_language),
          collectionID = as.factor(collectionID)) %>%  
   group_by(collectionID) %>%
   mutate(sizeOfCollection = n()) %>%
@@ -150,7 +133,6 @@ test <- test_raw %>%
          dayRelease = wday(release_date),
          budget = ifelse(budget < 1000, mBudgetTest, budget),
          runtime = ifelse(is.na(runtime) == TRUE, mRuntimeTest, runtime),
-         original_language = as.factor(original_language),
          collectionID = as.factor(collectionID)) %>%  
   group_by(collectionID) %>%
   mutate(sizeOfCollection = n()) %>%
@@ -161,29 +143,46 @@ test <- test_raw %>%
          -production_countries, -status, -releaseYear, -releaseMonth, -releaseDay,
          -title, -collectionID, -release_date)
 
-
 ###################################
 
-trainRevenue <- select(train, id, revenue) %>%
-  mutate(revenue = log10(revenue + 1))
+train <- mutate(train, 
+                budget = log10(budget + 1),
+                runtime = log10(runtime + 1),
+                popularity = log10(popularity + 1),
+                revenue = log10(revenue + 1))
 
-train <- select(train, -revenue)
-trainAndTest <- fixLevels(train, test)
-
-train <- trainAndTest[[1]]
-test <- trainAndTest[[2]]
-
-train <- left_join(train, trainRevenue, by = 'id') %>%
-  select(-id)
+test <- mutate(test, 
+                budget = log10(budget + 1),
+                runtime = log10(runtime + 1),
+                popularity = log10(popularity + 1))
 
 ###################################
+# Fix levels
 
+languageAll <- bind_rows(select(train, original_language) %>%
+  mutate(testOrTrain = 'train'), select(test, original_language) %>%
+    mutate(testOrTrain = 'test')) %>% 
+  mutate(original_language = as.factor(original_language))
+
+train <- select(train, -original_language) %>%
+  bind_cols(filter(languageAll, testOrTrain == 'train')) %>%
+  select(-testOrTrain)
+
+
+test <- select(test, -original_language) %>%
+  bind_cols(filter(languageAll, testOrTrain == 'test')) %>%
+  select(-testOrTrain)
+
+
+###################################
+train <- select(train, -id)
 
 testID <- select(test, id)
 test <- select(test, -id)
 
-smp_size <- floor(0.90 * nrow(train))
+smp_size <- floor(0.85 * nrow(train))
 
+set.seed(11000000)
 train_ind <- sample(seq_len(nrow(train)), size = smp_size)
 
 trainTrain <- train[train_ind, ]
@@ -202,7 +201,9 @@ toc()
 predictTestTrain <- predict(fitRF, testTrain)
 
 
-rmseRF <- sqrt(sum((predictTestTrain - testTrain$revenue)^2) / nrow(testTrain))
+rmseRF <- sqrt(sum((log(10^predictTestTrain + 1) - log(10^testTrain$revenue + 1))^2)
+               / nrow(testTrain))
+
 print(rmseRF)
 
 
@@ -217,7 +218,7 @@ importanceRF$predictor <- factor(importanceRF$predictor, importanceRF$predictor)
 impPlot <- ggplot(importanceRF, aes(as.factor(predictor), RMSE))
 impPlot + geom_bar(stat = 'Identity') +
   theme(axis.text.x=element_text(angle=45,hjust=1)) +
-  labs(y = 'rmse', x = 'predictor')
+  labs(y = 'rmsle', x = 'predictor')
 
 predictTest <- predict(fitRF, test)
 
@@ -232,17 +233,4 @@ sub <- bind_cols(testID, predictTest)%>%
 
 
 write.csv(sub, file = "submission.csv",row.names=FALSE, quote = FALSE)
-
-
-
-
-
-
-
-
-
-
-
-
-
 
