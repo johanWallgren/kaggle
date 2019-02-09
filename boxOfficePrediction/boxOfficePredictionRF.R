@@ -146,15 +146,15 @@ test <- test_raw %>%
 ###################################
 
 train <- mutate(train, 
-                budget = log10(budget + 1),
-                runtime = log10(runtime + 1),
-                popularity = log10(popularity + 1),
+                # budget = log10(budget + 1),
+                # runtime = log10(runtime + 1),
+                # popularity = log10(popularity + 1),
                 revenue = log10(revenue + 1))
 
-test <- mutate(test, 
-                budget = log10(budget + 1),
-                runtime = log10(runtime + 1),
-                popularity = log10(popularity + 1))
+# test <- mutate(test, 
+#                 budget = log10(budget + 1),
+#                 runtime = log10(runtime + 1),
+#                 popularity = log10(popularity + 1))
 
 ###################################
 # Fix levels
@@ -182,18 +182,45 @@ test <- select(test, -id)
 
 smp_size <- floor(0.85 * nrow(train))
 
-set.seed(11000000)
 train_ind <- sample(seq_len(nrow(train)), size = smp_size)
 
 trainTrain <- train[train_ind, ]
 testTrain <- train[-train_ind, ]
 
+mtryList <- c(6,8,10,12)
+nodeSizeList <- c(12,14,16,18,20)
+
+rfList <- as_tibble(expand.grid(mtryList, nodeSizeList)) %>%
+  rename(mtry = Var1, nodeSize = Var2) %>%
+  mutate(rmsle = 0)
+
+for(i in 1:dim(rfList)[1]){
+
+  fitRF <- randomForest(formula = revenue ~ ., data = trainTrain, 
+                        ntree = 500,
+                        mtry = rfList[i, ]$mtry,
+                        nodesize = rfList[i, ]$nodeSize, 
+                        importance = FALSE)
+  
+  predictTestTrain <- predict(fitRF, testTrain)
+
+  rfList[i, ]$rmsle <- sqrt(sum((log(10^predictTestTrain + 1) - log(10^testTrain$revenue + 1))^2)
+                 / nrow(testTrain))
+  
+  print(head(rfList, i))
+}
+
+rfList %>%
+  arrange(rmsle)
+
+
+
 # RF
 tic()
 fitRF <- randomForest(formula = revenue ~ ., data = trainTrain, 
                       ntree = 500,
-                      mtry = 15,
-                      nodesize = 10, 
+                      mtry = 8,
+                      nodesize = 18, 
                       importance = TRUE)
 toc()
 
