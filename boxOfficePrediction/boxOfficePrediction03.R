@@ -446,7 +446,7 @@ importanceRF$predictor <- factor(importanceRF$predictor, importanceRF$predictor)
 impPlot <- ggplot(importanceRF, aes(as.factor(predictor), RMSE))
 impPlot + geom_bar(stat = 'Identity') +
   theme(axis.text.x=element_text(angle=45,hjust=1)) +
-  labs(y = 'rmsle', x = 'predictor')
+  labs(title = 'Importance of predictors', subtitle = 'Mean Decrease Gini', y = 'rmsle', x = 'predictor')
 
 # ##########################################################################
 # Re run using all of training data
